@@ -278,3 +278,7 @@ public class PoolConfig {
     }
 }
 
+public interface IObjectPooler {
+	void CreatePools();
+}
+
