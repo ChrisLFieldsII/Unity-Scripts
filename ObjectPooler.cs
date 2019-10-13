@@ -55,8 +55,7 @@ public class ObjectPooler : MonoBehaviour {
     }
 
     /// <summary>
-    /// Creates the pool given a POOL_TAG and <paramref name="poolConfig"/>. The <paramref name="poolConfig"/> reference is 
-    /// copied to another reference!
+    /// Creates the pool given a POOL_TAG and <paramref name="poolConfig"/>.
     /// This method avoids creating duplicate pools.
     /// Cache the associated POOL_TAG passed into the <paramref name="poolConfig"/> as a
     /// <see langword="static"/> string in the GameObject that needs pooling.
@@ -208,8 +207,11 @@ public class ObjectPooler : MonoBehaviour {
             // Just find first inactive
             else inactiveIndex = poolConfig.poolList.FindIndex(go => !go.activeInHierarchy);
 
-            // an inactive GO wasnt found. do auto-grow
+            // an inactive GO wasnt found. do auto-grow if allowed
             if (inactiveIndex == -1) {
+                if (poolConfig.maxNumAutoGrow == 0 || poolConfig.poolList.Count == poolConfig.maxNumAutoGrow) {
+					return null;
+				}
 
                 // create new active GO, add to list, and return to client
                 GameObject randomPoolGO = poolConfig.poolPrefabs[Random.Range(0, poolConfig.poolPrefabs.Length)];
@@ -230,9 +232,13 @@ public class ObjectPooler : MonoBehaviour {
 
             inactiveIndex = poolConfig.poolList.FindIndex(go => !go.activeInHierarchy && go.name.Equals(prefabName));
 
-            // an inactive GO wasnt found. do auto-grow
+            // an inactive GO wasnt found. do auto-grow if allowed
             if (inactiveIndex == -1) {
-                GameObject prefab = null;
+				if (poolConfig.maxNumAutoGrow == 0 || poolConfig.poolList.Count == poolConfig.maxNumAutoGrow) {
+					return null;
+				}
+
+				GameObject prefab = null;
                 for (int x=0; x<poolConfig.poolPrefabs.Length; x++) {
                     GameObject currPrefab = poolConfig.poolPrefabs[x];
                     if (currPrefab.name.Equals(prefabName)) prefab = currPrefab;
@@ -261,21 +267,28 @@ public class ObjectPooler : MonoBehaviour {
 public class PoolConfig {
     public GameObject[] poolPrefabs; // allows pooling of one or several related GOs
     public int poolAmount;
+	public int maxNumAutoGrow = 10; // if 0, autoGrow is disabled. if can't autoGrow, null is returned
     public List<GameObject> poolList = new List<GameObject>();
     public string poolTag;
 
     // So client doesnt have to create array just to create a pool with only one prefab!
-    public PoolConfig(string poolTag, GameObject poolPrefab, int poolAmount) {
+    public PoolConfig(string poolTag, GameObject poolPrefab, int poolAmount, int maxNumAutoGrow = 10) {
         this.poolPrefabs = new GameObject[1] { poolPrefab };
         this.poolAmount = poolAmount;
         this.poolTag = poolTag;
+		this.maxNumAutoGrow = maxNumAutoGrow;
+
+		poolList.Capacity = maxNumAutoGrow == 0 ? poolAmount : maxNumAutoGrow;
     }
 
-    public PoolConfig(string poolTag, GameObject[] poolPrefabs, int poolAmount) {
+    public PoolConfig(string poolTag, GameObject[] poolPrefabs, int poolAmount, int maxNumAutoGrow = 10) {
         this.poolPrefabs = poolPrefabs ?? throw new ArgumentNullException(nameof(poolPrefabs));
         this.poolAmount = poolAmount;
         this.poolTag = poolTag ?? throw new ArgumentNullException(nameof(poolTag));
-    }
+		this.maxNumAutoGrow = maxNumAutoGrow;
+
+		poolList.Capacity = maxNumAutoGrow == 0 ? poolAmount : maxNumAutoGrow;
+	}
 }
 
 public interface IObjectPooler {
